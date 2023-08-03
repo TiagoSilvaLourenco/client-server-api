@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -23,6 +24,8 @@ type Quotation struct {
 }
 
 func main() {
+	ctx := context.Background()
+
 	http.HandleFunc("/cotacao", requestQuotationHandler)
 	http.ListenAndServe(":8080", nil)
 }

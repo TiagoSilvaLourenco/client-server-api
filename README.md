@@ -1,6 +1,19 @@
-# client-server-api
+## Para rodar o projeto
 
-Olá dev, tudo bem?
+### Client:
+
+Na pasta do projeto Client rode: go run main.go
+Após o comando ele deve fazer a requisição
+Receber a resposta
+Salvar em um arquivo cotacao.txt a informação recebida
+
+### Server:
+
+Na pasta do projeto Server rode: go run main.go
+
+Para testar o server apos rodar o comando acima abra outro terminal e use o comando: curl localhost:8080/cotacao
+
+# client-server-api
 
 Neste desafio vamos aplicar o que aprendemos sobre webserver http, contextos,
 banco de dados e manipulação de arquivos com Go.
@@ -22,28 +35,10 @@ Os requisitos para cumprir este desafio são:
 
 [x] Utilizando o package "context", o client.go terá um timeout máximo de 300ms para receber o resultado do server.go.
 
-[] Os 3 contextos deverão retornar erro nos logs caso o tempo de execução seja insuficiente.
+[x] Os 3 contextos deverão retornar erro nos logs caso o tempo de execução seja insuficiente.
 
 [X] O client.go terá que salvar a cotação atual em um arquivo "cotacao.txt" no formato: Dólar: {valor}
 
 [x] O endpoint necessário gerado pelo server.go para este desafio será: /cotacao e a porta a ser utilizada pelo servidor HTTP será a 8080.
 
-[] Ao finalizar, envie o link do repositório para correção.
-
-## Para rodar o projeto
-
-### Client:
-
-Na pasta do projeto Client rode: go run main.go
-Após o comando ele deve fazer a requisição
-Receber a resposta
-Salvar em um arquivo cotacao.txt a informação recebida
-
-### Server:
-
-Na pasta do projeto Server rode: go run main.go
-
-Para testar o context no server use o comando: curl localhost:8080/cotacao
-Após o ele receber uma requisição do Client:
-Ele deve buscar a informação na url do desafio
-Ele deve salvar no banco sqlite cada requisição
+[x] Ao finalizar, envie o link do repositório para correção.

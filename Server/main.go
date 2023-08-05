@@ -3,8 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
+	"time"
+
+	"gorm.io/driver/sqlite" // Sqlite driver based on CGO
+	// "github.com/glebarez/sqlite" // Pure go SQLite driver, checkout https://github.com/glebarez/sqlite for details
+	"gorm.io/gorm"
 )
 
 type Quotation struct {
@@ -23,51 +29,104 @@ type Quotation struct {
 	} `json:"USDBRL"`
 }
 
-func main() {
-	ctx := context.Background()
+type QuotationTable struct {
+	ID    int `gorm:"primaryKey"`
+	Value string
+}
 
+func main() {
+	// Begin server
 	http.HandleFunc("/cotacao", requestQuotationHandler)
 	http.ListenAndServe(":8080", nil)
 }
 
 func requestQuotationHandler(w http.ResponseWriter, r *http.Request) {
 
+	// Stop if URL is different of /cotacao
 	if r.URL.Path != "/cotacao" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	quotation, error := requestQuotation()
+	// Make request and return quotation
+	quotation, error := requestQuotation(r)
 	if error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// Make insertion in cotacoes.db
+	err := insertQuotation(quotation.Usdbrl.Bid)
+	if err != nil {
+		panic(err)
+	}
+
+	// Set up the header to application/json
 	w.Header().Set("Content-Type", "application/json")
+
+	// set up header the status 200
 	w.WriteHeader(http.StatusOK)
+
+	// Set up in JSON the response only of the value dollar
 	json.NewEncoder(w).Encode(quotation.Usdbrl.Bid)
 
 }
 
-func requestQuotation() (*Quotation, error) {
+func requestQuotation(r *http.Request) (*Quotation, error) {
 
-	resp, err := http.Get("https://economia.awesomeapi.com.br/json/last/USD-BRL")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
+	// Open a empty context
+	ctx := r.Context()
 	var q Quotation
-	err = json.Unmarshal(body, &q)
-	if err != nil {
-		return nil, err
+
+	select {
+
+	case <-time.After(200 * time.Millisecond):
+		resp, err := http.Get("https://economia.awesomeapi.com.br/json/last/USD-BRL")
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(body, &q)
+		if err != nil {
+			return nil, err
+		}
+
+	case <-ctx.Done():
+		log.Println("Timeout: Time exceeded")
+		return nil, http.ErrAbortHandler
 	}
 
 	return &q, nil
+}
+
+func insertQuotation(q string) error {
+	ctx := context.Background()
+
+	select {
+	case <-time.After(10 * time.Millisecond):
+		db, err := gorm.Open(sqlite.Open("cotacoes.db"), &gorm.Config{})
+
+		if err != nil {
+			panic(err)
+		}
+		db.AutoMigrate(&QuotationTable{})
+
+		db.Create(&QuotationTable{
+			Value: q,
+		})
+
+		log.Printf("Insert: Did with success! value: %v", q)
+		return nil
+
+	case <-ctx.Done():
+		log.Println("Timeout: Time exceeded, insert failed")
+		return ctx.Err()
+	}
 
 }

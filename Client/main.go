@@ -1,23 +1,31 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
 )
 
 func main() {
-	c := http.Client{Timeout: time.Second}
 
-	res, err := c.Get("http://localhost:8080/cotacao")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*300)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080/cotacao", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		panic(err)
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
 	}

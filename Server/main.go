@@ -73,60 +73,53 @@ func requestQuotationHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestQuotation(r *http.Request) (*Quotation, error) {
+	// Cria um contexto com timeout de 200ms
+	ctx, cancel := context.WithTimeout(r.Context(), 200*time.Millisecond)
+	defer cancel()
 
-	// Open a empty context
-	ctx := r.Context()
 	var q Quotation
 
-	select {
+	// Faz a requisição HTTP usando o contexto com timeout
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://economia.awesomeapi.com.br/json/last/USD-BRL", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-	case <-time.After(200 * time.Millisecond):
-		resp, err := http.Get("https://economia.awesomeapi.com.br/json/last/USD-BRL")
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		err = json.Unmarshal(body, &q)
-		if err != nil {
-			return nil, err
-		}
-
-	case <-ctx.Done():
-		log.Println("Timeout: Time exceeded")
-		return nil, http.ErrAbortHandler
+	err = json.Unmarshal(body, &q)
+	if err != nil {
+		return nil, err
 	}
 
 	return &q, nil
 }
 
 func insertQuotation(q string) error {
-	ctx := context.Background()
+	// Cria um contexto com timeout de 10ms
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*10)
+	defer cancel()
 
-	select {
-	case <-time.After(10 * time.Millisecond):
-		db, err := gorm.Open(sqlite.Open("cotacoes.db"), &gorm.Config{})
-
-		if err != nil {
-			panic(err)
-		}
-		db.AutoMigrate(&QuotationTable{})
-
-		db.Create(&QuotationTable{
-			Value: q,
-		})
-
-		log.Printf("Insert: Did with success! value: %v", q)
-		return nil
-
-	case <-ctx.Done():
-		log.Println("Timeout: Time exceeded, insert failed")
-		return ctx.Err()
+	db, err := gorm.Open(sqlite.Open("cotacoes.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
 	}
+	db = db.WithContext(ctx)
 
+	db.AutoMigrate(&QuotationTable{})
+
+	db.Create(&QuotationTable{
+		Value: q,
+	})
+
+	log.Printf("Insert: Did with success! value: %v", q)
+	return nil
 }

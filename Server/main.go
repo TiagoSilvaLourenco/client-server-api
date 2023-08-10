@@ -76,6 +76,9 @@ func requestQuotation(r *http.Request) (*Quotation, error) {
 	// Cria um contexto com timeout de 200ms
 	ctx, cancel := context.WithTimeout(r.Context(), 200*time.Millisecond)
 	defer cancel()
+	if err := ctx.Err(); err != nil {
+		panic(err)
+	}
 
 	var q Quotation
 
